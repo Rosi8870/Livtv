@@ -165,16 +165,22 @@ video::-webkit-media-controls-time-remaining-display {
 </div>
 
 <script>
-/* ===== WEBSITE VIEW ANALYTICS ===== */
-const today = new Date().toISOString().slice(0,10);
-let siteAnalytics = JSON.parse(localStorage.getItem("siteAnalytics") || "{}");
+/* ===== WEBSITE VIEW ANALYTICS (FIXED) ===== */
+const today = new Date().toISOString().slice(0, 10);
 
-siteAnalytics.totalViews = (siteAnalytics.totalViews || 0) + 1;
-siteAnalytics.days = siteAnalytics.days || {};
-siteAnalytics.days[today] = (siteAnalytics.days[today] || 0) + 1;
-siteAnalytics.lastVisit = new Date().toLocaleString();
+/* Prevent multiple counts in same session */
+if (!sessionStorage.getItem("countedVisit")) {
+  let siteAnalytics = JSON.parse(localStorage.getItem("siteAnalytics") || "{}");
 
-localStorage.setItem("siteAnalytics", JSON.stringify(siteAnalytics));
+  siteAnalytics.totalViews = (siteAnalytics.totalViews || 0) + 1;
+  siteAnalytics.days = siteAnalytics.days || {};
+  siteAnalytics.days[today] = (siteAnalytics.days[today] || 0) + 1;
+  siteAnalytics.lastVisit = new Date().toLocaleString();
+
+  localStorage.setItem("siteAnalytics", JSON.stringify(siteAnalytics));
+  sessionStorage.setItem("countedVisit", "true");
+}
+/* ===== LIVE TV PLAYER ===== */
 
 const API = "https://livtv.onrender.com/channels";
 

@@ -2,145 +2,190 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Rosi8870 – Analytics Dashboard</title>
+<title>Rosi8870 – Analytics</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
-  font-family: system-ui;
+  font-family: system-ui, -apple-system;
   background: radial-gradient(circle at top, #1b2a3a, #05070c 70%);
   color: #fff;
 }
-.box {
-  margin: 16px;
-  padding: 18px;
-  background: rgba(255,255,255,0.10);
+
+/* Glass Card */
+.card {
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(20px);
   border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
 }
-h2, h3 {
-  margin-top: 0;
+
+/* Layout */
+.container {
+  max-width: 1100px;
+  margin: auto;
+  padding: 16px;
 }
-.stat {
-  display: flex;
-  justify-content: space-between;
-  margin: 10px 0;
+
+/* Login */
+.login {
+  max-width: 380px;
+  margin: 15vh auto;
 }
-.small {
-  font-size: 13px;
-  opacity: 0.85;
-}
+
 input, button {
   width: 100%;
-  padding: 12px;
-  margin-top: 8px;
-  border-radius: 10px;
+  padding: 14px;
+  border-radius: 12px;
   border: none;
+  margin-top: 12px;
+  font-size: 16px;
 }
+
 button {
-  background: rgba(255,255,255,0.2);
+  background: linear-gradient(135deg, #5da9ff, #7c6cff);
   color: #fff;
   cursor: pointer;
+}
+
+/* Stats Grid */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat h2 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.stat p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  opacity: .85;
+}
+
+/* Daily list */
+.day {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  font-size: 14px;
+}
+
+/* Mobile spacing */
+@media (max-width: 600px) {
+  h1 { font-size: 22px; }
 }
 </style>
 </head>
 
 <body>
 
-<!-- 🔐 LOGIN -->
-<div class="box" id="login">
-  <h2>🔐 Admin Login</h2>
-  <input id="password" type="password" placeholder="Enter admin password">
+<!-- LOGIN -->
+<div id="login" class="login card">
+  <h1>🔐 Admin Login</h1>
+  <input id="password" type="password" placeholder="Admin password">
   <button onclick="login()">Login</button>
 </div>
 
-<!-- 📊 DASHBOARD -->
+<!-- DASHBOARD -->
 <div id="dashboard" style="display:none">
+  <div class="container">
 
-  <div class="box">
-    <h2>📊 Website Analytics</h2>
-
-    <div class="stat">
-      <span>Total Website Views</span>
-      <b id="totalViews">0</b>
+    <div class="card">
+      <h1>📊 Website Analytics</h1>
+      <div class="stats">
+        <div class="stat">
+          <h2 id="totalViews">0</h2>
+          <p>Total Views</p>
+        </div>
+        <div class="stat">
+          <h2 id="todayViews">0</h2>
+          <p>Today</p>
+        </div>
+        <div class="stat">
+          <h2 id="activeDays">0</h2>
+          <p>Active Days</p>
+        </div>
+        <div class="stat">
+          <h2 id="totalPlays">0</h2>
+          <p>Channel Plays</p>
+        </div>
+      </div>
     </div>
 
-    <div class="stat">
-      <span>Total Channel Plays</span>
-      <b id="totalPlays">0</b>
+    <div class="card">
+      <h2>📅 Daily Views</h2>
+      <div id="dailyStats">No data yet</div>
     </div>
 
-    <div class="stat">
-      <span>Active Days</span>
-      <b id="activeDays">0</b>
-    </div>
-
-    <div class="stat">
-      <span>Today’s Views</span>
-      <b id="todayViews">0</b>
-    </div>
-
-    <div class="stat small">
-      <span>Last Visit</span>
-      <span id="lastVisit">—</span>
-    </div>
   </div>
-
-  <div class="box">
-    <h3>📅 Day-by-Day Views</h3>
-    <div id="dailyStats" class="small">No data yet</div>
-  </div>
-
 </div>
 
 <script>
-const ADMIN_PASSWORD = "Rosi@1234";
+const PASSWORD = "Rosi@1234";
+
+/* Persist login */
+if (localStorage.getItem("adminLogged") === "true") {
+  showDashboard();
+}
 
 function login(){
-  const pwd = document.getElementById("password").value;
-  if(pwd === ADMIN_PASSWORD){
-    document.getElementById("login").style.display = "none";
-    document.getElementById("dashboard").style.display = "block";
-    loadAnalytics();
+  if (document.getElementById("password").value === PASSWORD) {
+    localStorage.setItem("adminLogged", "true");
+    showDashboard();
   } else {
     alert("Wrong password");
   }
 }
 
+function showDashboard(){
+  document.getElementById("login").style.display = "none";
+  document.getElementById("dashboard").style.display = "block";
+  loadAnalytics();
+}
+
 function loadAnalytics(){
   const site = JSON.parse(localStorage.getItem("siteAnalytics") || "{}");
   const video = JSON.parse(localStorage.getItem("analytics") || "{}");
-
   const today = new Date().toISOString().slice(0,10);
 
   document.getElementById("totalViews").textContent =
     site.totalViews || 0;
 
+  document.getElementById("todayViews").textContent =
+    (site.days && site.days[today]) || 0;
+
+  document.getElementById("activeDays").textContent =
+    site.days ? Object.keys(site.days).length : 0;
+
   document.getElementById("totalPlays").textContent =
     video.total || 0;
 
-  const days = site.days || {};
-  document.getElementById("activeDays").textContent =
-    Object.keys(days).length;
-
-  document.getElementById("todayViews").textContent =
-    days[today] || 0;
-
-  document.getElementById("lastVisit").textContent =
-    site.lastVisit || "—";
-
-  /* Daily list */
   const list = document.getElementById("dailyStats");
   list.innerHTML = "";
 
-  if(!Object.keys(days).length){
+  if (!site.days) {
     list.textContent = "No daily data yet";
     return;
   }
 
-  Object.keys(days).sort().reverse().forEach(d=>{
+  Object.keys(site.days).sort().reverse().forEach(d => {
     const div = document.createElement("div");
-    div.textContent = `${d} → ${days[d]} views`;
+    div.className = "day";
+    div.innerHTML = `<span>${d}</span><span>${site.days[d]} views</span>`;
     list.appendChild(div);
   });
 }

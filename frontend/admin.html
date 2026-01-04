@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin – Live TV Player</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: system-ui;
+  background: radial-gradient(circle at top, #1b2a3a, #05070c 70%);
+  color: #fff;
+}
+.glass {
+  margin: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.10);
+  backdrop-filter: blur(18px);
+}
+h2, h3 { margin-top: 0; }
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin: 6px 0;
+  border-radius: 10px;
+  border: none;
+}
+button {
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+  cursor: pointer;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 6px 0;
+  font-size: 14px;
+}
+.small { opacity: .8; font-size: 13px; }
+hr { opacity: .2; }
+.actions button { width: auto; margin-left: 6px; }
+</style>
+</head>
+
+<body>
+
+<!-- PIN LOCK -->
+<div id="lock" class="glass">
+  <h2>🔐 Admin PIN</h2>
+  <input id="pin" type="password" placeholder="Enter PIN">
+  <button onclick="unlock()">Unlock</button>
+</div>
+
+<!-- ADMIN -->
+<div id="admin" style="display:none">
+
+  <!-- DASHBOARD -->
+  <div class="glass">
+    <h2>📊 Dashboard</h2>
+    <div id="dashboard"></div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="glass">
+    <h2>📈 Watch Analytics</h2>
+    <div id="analytics"></div>
+    <button onclick="resetAnalytics()">Reset Analytics</button>
+  </div>
+
+  <!-- CHANNEL CONTROL -->
+  <div class="glass">
+    <h2>📺 Channel Control</h2>
+    <input id="search" placeholder="Search channels">
+    <div id="channels">Loading…</div>
+    <button onclick="resetDisabled()">Reset Disabled Channels</button>
+  </div>
+
+  <!-- FAVORITES -->
+  <div class="glass">
+    <h2>⭐ Favorites</h2>
+    <div id="favorites"></div>
+    <button onclick="clearFavorites()">Clear All Favorites</button>
+  </div>
+
+  <!-- SYSTEM -->
+  <div class="glass">
+    <h2>⚡ System</h2>
+    <button onclick="resetLast()">Reset Last Played</button>
+    <button onclick="clearAll()">Clear ALL Data</button>
+  </div>
+
+</div>
+
+<script>
+/* ===== PIN ===== */
+const savedPin = localStorage.getItem("adminPin") || "1234";
+
+function unlock(){
+  if(document.getElementById("pin").value === savedPin){
+    document.getElementById("lock").style.display="none";
+    document.getElementById("admin").style.display="block";
+    init();
+  } else alert("Wrong PIN");
+}
+
+/* ===== DATA ===== */
+let channels=[], disabled=[], favorites=[], analytics={};
+
+function init(){
+  disabled = JSON.parse(localStorage.getItem("disabledChannels")||"[]");
+  favorites = JSON.parse(localStorage.getItem("favorites")||"[]");
+  analytics = JSON.parse(localStorage.getItem("analytics")||"{}");
+
+  fetch("/channels").then(r=>r.json()).then(d=>{
+    channels=d;
+    renderAll();
+  });
+}
+
+function renderAll(){
+  renderDashboard();
+  renderAnalytics();
+  renderChannels();
+  renderFavorites();
+}
+
+/* ===== DASHBOARD ===== */
+function renderDashboard(){
+  document.getElementById("dashboard").innerHTML=`
+    <div class="row"><b>Total Channels</b><span>${channels.length}</span></div>
+    <div class="row"><b>Disabled</b><span>${disabled.length}</span></div>
+    <div class="row"><b>Favorites</b><span>${favorites.length}</span></div>
+    <div class="row"><b>Total Plays</b><span>${analytics.total||0}</span></div>
+    <div class="small">Last Played: ${analytics.lastPlayed||"None"}</div>
+  `;
+}
+
+/* ===== ANALYTICS ===== */
+function renderAnalytics(){
+  let html="";
+  for(const k in analytics){
+    if(!["total","lastPlayed","lastTime"].includes(k)){
+      html+=`<div class="row"><span>${k}</span><span>${analytics[k]}</span></div>`;
+    }
+  }
+  document.getElementById("analytics").innerHTML = html || "<div class='small'>No data</div>";
+}
+
+function resetAnalytics(){
+  localStorage.removeItem("analytics");
+  analytics={};
+  renderAll();
+}
+
+/* ===== CHANNEL CONTROL ===== */
+function renderChannels(){
+  const q=document.getElementById("search").value.toLowerCase();
+  const el=document.getElementById("channels");
+  el.innerHTML="";
+
+  channels.filter(c=>c.name.toLowerCase().includes(q)).forEach(c=>{
+    const isDis=disabled.includes(c.url);
+    el.innerHTML+=`
+      <div class="row">
+        <span>${c.name}</span>
+        <div class="actions">
+          <button onclick="copy('${c.url}')">Copy</button>
+          <button onclick="toggleDisable('${c.url}')">${isDis?"Enable":"Disable"}</button>
+        </div>
+      </div>`;
+  });
+}
+
+function toggleDisable(url){
+  disabled = disabled.includes(url)
+    ? disabled.filter(u=>u!==url)
+    : [...disabled,url];
+  localStorage.setItem("disabledChannels",JSON.stringify(disabled));
+  renderAll();
+}
+
+function resetDisabled(){
+  localStorage.removeItem("disabledChannels");
+  disabled=[];
+  renderAll();
+}
+
+/* ===== FAVORITES ===== */
+function renderFavorites(){
+  const el=document.getElementById("favorites");
+  el.innerHTML="";
+  if(!favorites.length){
+    el.innerHTML="<div class='small'>No favorites</div>";
+    return;
+  }
+  favorites.forEach(f=>{
+    el.innerHTML+=`
+      <div class="row">
+        <span class="small">${f}</span>
+        <button onclick="removeFav('${f}')">Remove</button>
+      </div>`;
+  });
+}
+
+function removeFav(url){
+  favorites=favorites.filter(f=>f!==url);
+  localStorage.setItem("favorites",JSON.stringify(favorites));
+  renderAll();
+}
+
+function clearFavorites(){
+  localStorage.removeItem("favorites");
+  favorites=[];
+  renderAll();
+}
+
+/* ===== SYSTEM ===== */
+function resetLast(){
+  localStorage.removeItem("lastChannel");
+  alert("Last played reset");
+}
+
+function clearAll(){
+  if(confirm("Clear ALL data?")){
+    localStorage.clear();
+    location.reload();
+  }
+}
+
+function copy(t){
+  navigator.clipboard.writeText(t);
+  alert("Copied");
+}
+
+document.getElementById("search").oninput=renderChannels;
+</script>
+
+</body>
+</html>

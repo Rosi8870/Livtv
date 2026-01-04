@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rosi8870 – Admin Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body {
+  margin: 0;
+  font-family: system-ui;
+  background: radial-gradient(circle at top, #1b2a3a, #05070c 70%);
+  color: #fff;
+}
+.box {
+  margin: 16px;
+  padding: 16px;
+  background: rgba(255,255,255,0.10);
+  border-radius: 16px;
+}
+h2,h3 { margin-top: 0; }
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 6px 0;
+  gap: 10px;
+}
+button,input {
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+}
+button {
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+  cursor: pointer;
+}
+.small {
+  opacity: .8;
+  font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- 🔐 PIN LOCK -->
+<div class="box" id="lock">
+  <h2>🔐 Admin Access</h2>
+  <input id="pin" type="password" placeholder="Enter Admin PIN">
+  <button onclick="unlock()">Unlock</button>
+  <div class="small">Default PIN: 1234</div>
+</div>
+
+<!-- ADMIN -->
+<div id="admin" style="display:none">
+
+  <!-- DASHBOARD -->
+  <div class="box">
+    <h3>📊 Dashboard</h3>
+    <div id="dashboard">Loading…</div>
+  </div>
+
+  <!-- CHANNEL CONTROL -->
+  <div class="box">
+    <h3>📺 Channel Control</h3>
+    <div id="channels">Loading channels…</div>
+  </div>
+
+  <!-- FAVORITES -->
+  <div class="box">
+    <h3>⭐ Favorites</h3>
+    <div id="favorites" class="small">No favorites yet</div>
+    <button onclick="clearFavorites()">Clear Favorites</button>
+  </div>
+
+  <!-- SYSTEM -->
+  <div class="box">
+    <h3>⚡ System</h3>
+    <button onclick="resetAnalytics()">Reset Analytics</button>
+    <button onclick="resetDisabled()">Reset Disabled Channels</button>
+    <button onclick="clearAll()">Clear ALL Data</button>
+  </div>
+
+</div>
+
+<script>
+const API = "https://livtv.onrender.com/channels";
+const PIN = localStorage.getItem("adminPin") || "1234";
+
+let channels = [];
+let disabled = [];
+let favorites = [];
+let analytics = {};
+
+function unlock(){
+  if(document.getElementById("pin").value === PIN){
+    document.getElementById("lock").style.display = "none";
+    document.getElementById("admin").style.display = "block";
+    loadData();
+  } else {
+    alert("Wrong PIN");
+  }
+}
+
+function loadData(){
+  disabled  = JSON.parse(localStorage.getItem("disabledChannels") || "[]");
+  favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+  analytics = JSON.parse(localStorage.getItem("analytics") || "{}");
+
+  fetch(API)
+    .then(r => r.json())
+    .then(data => {
+      channels = data;
+      renderAll();
+    })
+    .catch(() => {
+      document.getElementById("channels").innerHTML =
+        "<div class='small'>Failed to load channels</div>";
+    });
+}
+
+function renderAll(){
+  renderDashboard();
+  renderChannels();
+  renderFavorites();
+}
+
+/* DASHBOARD */
+function renderDashboard(){
+  document.getElementById("dashboard").innerHTML = `
+    <div>Total Channels: ${channels.length}</div>
+    <div>Disabled Channels: ${disabled.length}</div>
+    <div>Favorites: ${favorites.length}</div>
+    <div>Total Plays: ${analytics.total || 0}</div>
+    <div class="small">Last Played: ${analytics.lastPlayed || "—"}</div>
+  `;
+}
+
+/* CHANNEL CONTROL */
+function renderChannels(){
+  const el = document.getElementById("channels");
+  el.innerHTML = "";
+
+  if(!channels.length){
+    el.innerHTML = "<div class='small'>No channels loaded</div>";
+    return;
+  }
+
+  channels.forEach(c => {
+    const isDisabled = disabled.includes(c.url);
+    el.innerHTML += `
+      <div class="row">
+        <span>${c.name}</span>
+        <button onclick="toggleChannel('${c.url}')">
+          ${isDisabled ? "Enable" : "Disable"}
+        </button>
+      </div>
+    `;
+  });
+}
+
+function toggleChannel(url){
+  disabled = disabled.includes(url)
+    ? disabled.filter(u => u !== url)
+    : [...disabled, url];
+
+  localStorage.setItem("disabledChannels", JSON.stringify(disabled));
+  renderChannels();
+  renderDashboard();
+}
+
+/* FAVORITES */
+function renderFavorites(){
+  const el = document.getElementById("favorites");
+  el.innerHTML = "";
+
+  if(!favorites.length){
+    el.innerHTML = "<div class='small'>No favorites added</div>";
+    return;
+  }
+
+  favorites.forEach(f => {
+    el.innerHTML += `
+      <div class="row">
+        <span class="small">${f}</span>
+        <button onclick="removeFav('${f}')">Remove</button>
+      </div>
+    `;
+  });
+}
+
+function removeFav(url){
+  favorites = favorites.filter(f => f !== url);
+  localStorage.setItem("favorites", JSON.stringify(favorites));
+  renderFavorites();
+  renderDashboard();
+}
+
+function clearFavorites(){
+  localStorage.removeItem("favorites");
+  favorites = [];
+  renderFavorites();
+  renderDashboard();
+}
+
+/* SYSTEM */
+function resetAnalytics(){
+  localStorage.removeItem("analytics");
+  analytics = {};
+  renderDashboard();
+}
+
+function resetDisabled(){
+  localStorage.removeItem("disabledChannels");
+  disabled = [];
+  renderChannels();
+  renderDashboard();
+}
+
+function clearAll(){
+  if(confirm("Clear ALL data?")){
+    localStorage.clear();
+    location.reload();
+  }
+}
+</script>
+
+</body>
+</html>

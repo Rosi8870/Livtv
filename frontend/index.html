@@ -149,7 +149,8 @@ video::-webkit-media-controls-time-remaining-display {
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
-const API = "https://YOUR_RENDER_BACKEND_URL/channels";
+/* ✅ CONNECTED TO YOUR RENDER BACKEND */
+const API = "https://livtv.onrender.com/channels";
 
 const channelsEl = document.getElementById("channels");
 const searchInput = document.getElementById("search");
@@ -164,28 +165,30 @@ let disabled = JSON.parse(localStorage.getItem("disabledChannels") || "[]");
 let analytics = JSON.parse(localStorage.getItem("analytics") || "{}");
 let lastChannel = localStorage.getItem("lastChannel");
 
-fetch(API).then(r=>r.json()).then(data=>{
-  channels = data;
-  render();
-  if(lastChannel){
-    const ch = channels.find(c=>c.url===lastChannel);
-    if(ch && !disabled.includes(ch.url)) play(ch);
-  }
-});
+fetch(API)
+  .then(r => r.json())
+  .then(data => {
+    channels = data;
+    render();
+    if (lastChannel) {
+      const ch = channels.find(c => c.url === lastChannel);
+      if (ch && !disabled.includes(ch.url)) play(ch);
+    }
+  });
 
-function render(){
-  channelsEl.innerHTML="";
+function render() {
+  channelsEl.innerHTML = "";
   const q = searchInput.value.toLowerCase();
   channels
-    .filter(c=>!disabled.includes(c.url))
-    .filter(c=>c.name.toLowerCase().includes(q))
-    .forEach(c=>{
+    .filter(c => !disabled.includes(c.url))
+    .filter(c => c.name.toLowerCase().includes(q))
+    .forEach(c => {
       const fav = favorites.includes(c.url);
       const div = document.createElement("div");
-      div.className="channel";
-      div.innerHTML=`<span>${c.name}</span><span class="star">${fav?"⭐":"☆"}</span>`;
-      div.onclick=()=>play(c);
-      div.querySelector(".star").onclick=e=>{
+      div.className = "channel";
+      div.innerHTML = `<span>${c.name}</span><span class="star">${fav?"⭐":"☆"}</span>`;
+      div.onclick = () => play(c);
+      div.querySelector(".star").onclick = e => {
         e.stopPropagation();
         toggleFav(c.url);
       };
@@ -193,47 +196,47 @@ function render(){
     });
 }
 
-function play(channel){
-  localStorage.setItem("lastChannel",channel.url);
-  playerSkeleton.style.display="block";
-  if(hls) hls.destroy();
+function play(channel) {
+  localStorage.setItem("lastChannel", channel.url);
+  playerSkeleton.style.display = "block";
+  if (hls) hls.destroy();
 
-  if(Hls.isSupported()){
-    hls=new Hls();
+  if (Hls.isSupported()) {
+    hls = new Hls();
     hls.loadSource(channel.url);
     hls.attachMedia(video);
-    hls.on(Hls.Events.FRAG_LOADED,()=>{
-      playerSkeleton.style.display="none";
+    hls.on(Hls.Events.FRAG_LOADED, () => {
+      playerSkeleton.style.display = "none";
       video.play().catch(()=>{});
       recordAnalytics(channel.name);
     });
   } else {
-    video.src=channel.url;
-    video.onloadeddata=()=>{
-      playerSkeleton.style.display="none";
+    video.src = channel.url;
+    video.onloadeddata = () => {
+      playerSkeleton.style.display = "none";
       recordAnalytics(channel.name);
       video.play();
     };
   }
 }
 
-function toggleFav(url){
+function toggleFav(url) {
   favorites = favorites.includes(url)
-    ? favorites.filter(f=>f!==url)
-    : [...favorites,url];
-  localStorage.setItem("favorites",JSON.stringify(favorites));
+    ? favorites.filter(f => f !== url)
+    : [...favorites, url];
+  localStorage.setItem("favorites", JSON.stringify(favorites));
   render();
 }
 
-function recordAnalytics(name){
-  analytics.total=(analytics.total||0)+1;
-  analytics[name]=(analytics[name]||0)+1;
-  analytics.lastPlayed=name;
-  analytics.lastTime=new Date().toLocaleString();
-  localStorage.setItem("analytics",JSON.stringify(analytics));
+function recordAnalytics(name) {
+  analytics.total = (analytics.total || 0) + 1;
+  analytics[name] = (analytics[name] || 0) + 1;
+  analytics.lastPlayed = name;
+  analytics.lastTime = new Date().toLocaleString();
+  localStorage.setItem("analytics", JSON.stringify(analytics));
 }
 
-searchInput.oninput=render;
+searchInput.oninput = render;
 </script>
 
 </body>
